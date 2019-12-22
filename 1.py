@@ -1,1 +1,2 @@
-print('hello')
+gane = 1
+print(gane)
