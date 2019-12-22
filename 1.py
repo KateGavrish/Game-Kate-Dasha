@@ -1,2 +1,2 @@
 gane = 1
-print(gane)
+print(1)
