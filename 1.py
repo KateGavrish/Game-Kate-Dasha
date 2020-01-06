@@ -252,7 +252,8 @@ def start_screen():
     info.rect.x = 290
     info.rect.y = 400
 
-    while True:
+    running = True
+    while running:
         screen.fill((30, 30, 30))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -272,7 +273,7 @@ def start_screen():
                 if info.rect.collidepoint(x, y):
                     pass
                 elif play.rect.collidepoint(x, y):
-                    pass
+                    running = False
         buttons_start.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
@@ -312,7 +313,7 @@ level_height = 1000
 
 camera = Camera(camera_state, level_width, level_height)
 
-# start_screen()
+start_screen()
 running = True
 while running:
     for event in pygame.event.get():
