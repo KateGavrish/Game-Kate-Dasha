@@ -296,7 +296,7 @@ all_sprites.add(spell)
 
 life_images = [pygame.transform.scale(load_image('life.png', (255, 255, 255)), (33, 30)),
                pygame.transform.scale(load_image('life2.png', (255, 255, 255)), (33, 30))]
-for i in range(10, 160, 50):
+for i in range(10, 160, 50):  # жизни
     life = pygame.sprite.Sprite()
     life_group.add(life)
     life.image = life_images[1]
@@ -343,7 +343,7 @@ while running:
 
     pygame.draw.rect(screen, pygame.Color('red'), (790, 10, 100, 30), 1)
     font = pygame.font.Font(None, 35)
-    text = font.render(str(score).rjust(6, '0'), 1, (255, 0, 0))
+    text = font.render(str(score).rjust(6, '0'), 1, (255, 0, 0))  # счет
     screen.blit(text, (799, 14))
 
     hero.update(left, right, up, platforms)
