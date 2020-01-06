@@ -14,11 +14,6 @@ FPS = 50
 player = None
 
 buttons_start = pygame.sprite.Group()
-play = pygame.sprite.Sprite()
-info = pygame.sprite.Sprite()
-buttons_start.add(play)
-buttons_start.add(info)
-
 player = pygame.sprite.Group()
 platform_group = pygame.sprite.Group()
 stairs_group = pygame.sprite.Group()
@@ -98,16 +93,45 @@ def terminate():
 
 
 def start_screen():
-    screen.fill((30, 30, 30))
+    play = pygame.sprite.Sprite()
+    info = pygame.sprite.Sprite()
+    buttons_start.add(play)
+    buttons_start.add(info)
+
+    play_images = [load_image('menu_play1.png'), load_image('menu_play2.png')]
+    play.image = play_images[0]
+    play.rect = play.image.get_rect()
+    play.rect.x = 290
+    play.rect.y = 300
+
+    info_images = [load_image('menu_info1.png'), load_image('menu_info2.png')]
+    info.image = info_images[0]
+    info.rect = info.image.get_rect()
+    info.rect.x = 290
+    info.rect.y = 400
+
     while True:
+        screen.fill((30, 30, 30))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.MOUSEBUTTONDOWN: # проверяем, если было нажатие на стартовом экране
+            elif event.type == pygame.MOUSEMOTION:  # находится ли курсор на одной из кнопок
                 x, y = event.pos
-                for box in buttons_start:
-                    if box.rect.collidepoint(x, y):
-                        pass  # решить вопрос с кнопками на стартовом меню
+                if play.rect.collidepoint(x, y):
+                    play.image = play_images[1]
+                else:
+                    play.image = play_images[0]
+                if info.rect.collidepoint(x, y):
+                    info.image = info_images[1]
+                else:
+                    info.image = info_images[0]
+            elif event.type == pygame.MOUSEBUTTONUP:  # проверяем, если было нажатие на стартовом экране
+                x, y = event.pos
+                if info.rect.collidepoint(x, y):
+                    pass
+                elif play.rect.collidepoint(x, y):
+                    pass
+        buttons_start.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
 
