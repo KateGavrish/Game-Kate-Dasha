@@ -7,12 +7,12 @@ clock = pygame.time.Clock()
 size = width, height = 900, 700
 screen = pygame.display.set_mode(size)
 
-SPEED = 7
+SPEED = 5
 WIDTH = 22
 HEIGHT = 32
 JUMP = 5
-GRAVITY = 0.5
-FPS = 50
+GRAVITY = 0.45
+FPS = 40
 
 # основной персонаж
 player = None
@@ -72,6 +72,17 @@ def camera_state(camera, target_rect):
 
 
 class Player(pygame.sprite.Sprite):
+    still = load_image('still.png', pygame.Color('black'))
+    still = pygame.transform.scale(still, (22, 32))
+    left1 = load_image('left.png', pygame.Color('black'))
+    left1 = pygame.transform.scale(left1, (22, 32))
+    left2 = load_image('left2.png', pygame.Color('black'))
+    left2 = pygame.transform.scale(left2, (22, 32))
+    right1 = load_image('right.png', pygame.Color('black'))
+    right1 = pygame.transform.scale(right1, (22, 32))
+    right2 = load_image('right2.png', pygame.Color('black'))
+    right2 = pygame.transform.scale(right2, (22, 32))
+
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
         self.xv = 0
@@ -79,19 +90,29 @@ class Player(pygame.sprite.Sprite):
         self.startY = y
         self.yv = 0
         self.onPlat = False
-        self.image = pygame.Surface((WIDTH, HEIGHT))  # сделать изображение героя
-        self.image.fill(pygame.Color('grey'))
+        self.image = Player.still
         self.rect = pygame.Rect(x, y, WIDTH, HEIGHT)
         self.spell = None
         self.hammer = None
 
     def update(self, left, right, up, platforms):
+        a = {Player.left1: Player.left2, Player.left2: Player.left1,
+             Player.right1: Player.right2, Player.right2: Player.right1}
         if left:
             self.xv = -SPEED
+            if self.image == Player.still:
+                self.image = Player.left1
+            else:
+                self.image = a[self.image]
         if right:
             self.xv = SPEED
+            if self.image == Player.still:
+                self.image = Player.right1
+            else:
+                self.image = a[self.image]
         if not (left or right):
             self.xv = 0
+            self.image = Player.still
         if up:
             if self.onPlat:
                 self.yv = -JUMP
@@ -143,8 +164,6 @@ class Stairs(pygame.sprite.Sprite):
         self.image = Stairs.stairs_image
         self.image = pygame.transform.scale(self.image, (30, 100))  # размер лестницы
         self.rect = self.image.get_rect().move(x, y)
-        # self.rect.x = x
-        # self.rect.y = y
 
 
 class Platforms(pygame.sprite.Sprite):
@@ -153,10 +172,8 @@ class Platforms(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__(platform_group, all_sprites)
         self.image = Platforms.platform_image
-        self.image = pygame.transform.scale(self.image, (50, 30))  # размер платформы
+        self.image = pygame.transform.scale(self.image, (50, 20))  # размер платформы
         self.rect = self.image.get_rect().move(x, y)
-        # self.rect.x = x
-        # self.rect.y = y
 
 
 class Camera(object):
