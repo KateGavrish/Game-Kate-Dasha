@@ -1,38 +1,21 @@
-from pygame import *
 import pygame
 import os
 import sys
 
-clock = pygame.time.Clock()
 pygame.init()
+clock = pygame.time.Clock()
 size = width, height = 900, 700
 screen = pygame.display.set_mode(size)
 
-SPEED = 7
+SPEED = 5
 WIDTH = 22
 HEIGHT = 32
 JUMP = 5
-GRAVITY = 0.5
-FPS = 30
+GRAVITY = 0.45
+FPS = 40
 
 # основной персонаж
 player = None
-
-
-def start_screen():
-    screen.fill((30, 30, 30))
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                terminate()
-            elif event.type == pygame.MOUSEBUTTONDOWN: # проверяем, если было нажатие на стартовом экране
-                x, y = event.pos
-                for box in buttons_start:
-                    if box.rect.collidepoint(x, y):
-                        pass # решить вопрос с кнопками на стартовом меню
-
-        pygame.display.flip()
-        clock.tick(FPS)
 
 
 def load_image(name, colorkey=None):
@@ -85,30 +68,51 @@ def camera_state(camera, target_rect):
     top = max(-(camera.height - height), top)
     top = min(0, top)
 
-    return Rect(left, top, width_, height_)
+    return pygame.Rect(left, top, width_, height_)
 
 
-class Player(sprite.Sprite):
+class Player(pygame.sprite.Sprite):
+    still = load_image('still.png', pygame.Color('black'))
+    still = pygame.transform.scale(still, (22, 32))
+    left1 = load_image('left.png', pygame.Color('black'))
+    left1 = pygame.transform.scale(left1, (22, 32))
+    left2 = load_image('left2.png', pygame.Color('black'))
+    left2 = pygame.transform.scale(left2, (22, 32))
+    right1 = load_image('right.png', pygame.Color('black'))
+    right1 = pygame.transform.scale(right1, (22, 32))
+    right2 = load_image('right2.png', pygame.Color('black'))
+    right2 = pygame.transform.scale(right2, (22, 32))
+
     def __init__(self, x, y):
-        sprite.Sprite.__init__(self)
+        pygame.sprite.Sprite.__init__(self)
         self.xv = 0
         self.startX = x
         self.startY = y
         self.yv = 0
         self.onPlat = False
-        self.image = Surface((WIDTH, HEIGHT))  # сделать изображение героя
-        self.image.fill(Color('grey'))
-        self.rect = Rect(x, y, WIDTH, HEIGHT)
+        self.image = Player.still
+        self.rect = pygame.Rect(x, y, WIDTH, HEIGHT)
         self.spell = None
         self.hammer = None
 
     def update(self, left, right, up, platforms):
+        a = {Player.left1: Player.left2, Player.left2: Player.left1,
+             Player.right1: Player.right2, Player.right2: Player.right1}
         if left:
             self.xv = -SPEED
+            if self.image == Player.still:
+                self.image = Player.left1
+            else:
+                self.image = a[self.image]
         if right:
             self.xv = SPEED
+            if self.image == Player.still:
+                self.image = Player.right1
+            else:
+                self.image = a[self.image]
         if not (left or right):
             self.xv = 0
+            self.image = Player.still
         if up:
             if self.onPlat:
                 self.yv = -JUMP
@@ -124,17 +128,17 @@ class Player(sprite.Sprite):
         self.collide(self.xv, 0, platforms)
 
     def collide(self, xv, yv, platforms):
-        if sprite.collide_rect(self, hammer):
-            print(1)                             #доделать молот
+        if pygame.sprite.collide_rect(self, hammer):
+            print(1)  # доделать молот
         for s in stairs:
-            if sprite.collide_rect(self, s):
+            if pygame.sprite.collide_rect(self, s):
                 if yv > 0 and down:
                     self.rect.bottom = s.rect.bottom
                 if yv < 0:
                     self.rect.top = s.rect.top - 50
 
         for plat in platforms:
-            if sprite.collide_rect(self, plat):
+            if pygame.sprite.collide_rect(self, plat):
                 if xv > 0:
                     self.rect.right = plat.rect.left
                 if xv < 0:
@@ -148,11 +152,11 @@ class Player(sprite.Sprite):
                     self.yv = 0
 
 
-class Buck(sprite.Sprite):
+class Buck(pygame.sprite.Group):
     pass
 
 
-class Stairs(sprite.Sprite):
+class Stairs(pygame.sprite.Sprite):
     stairs_image = load_image('stairs.png', pygame.Color('white'))
 
     def __init__(self, x, y):
@@ -162,7 +166,7 @@ class Stairs(sprite.Sprite):
         self.rect = self.image.get_rect().move(x, y)
 
 
-class Platforms(sprite.Sprite):
+class Platforms(pygame.sprite.Sprite):
     platform_image = load_image('platform.png', pygame.Color('white'))
 
     def __init__(self, x, y):
@@ -175,7 +179,7 @@ class Platforms(sprite.Sprite):
 class Camera(object):
     def __init__(self, camera_func, width, height):
         self.camera_func = camera_func
-        self.state = Rect(0, 0, width, height)
+        self.state = pygame.Rect(0, 0, width, height)
 
     def apply(self, hero):
         return hero.rect.move(self.state.topleft)
@@ -184,11 +188,11 @@ class Camera(object):
         self.state = self.camera_func(self.state, target.rect)
 
 
-class Monster(pygame.sprite.Group):
+class Monster(pygame.sprite.Sprite):
     pass
 
 
-class Hammer(sprite.Sprite):
+class Hammer(pygame.sprite.Sprite):
     hammer_image = load_image('hammer.png', pygame.Color('white'))
     hammer_image1 = pygame.transform.scale(hammer_image, (40, 40))
     hammer_image2 = pygame.transform.scale(hammer_image, (42, 42))
@@ -198,7 +202,7 @@ class Hammer(sprite.Sprite):
     hammer_image6 = pygame.transform.scale(hammer_image, (50, 50))
 
     def __init__(self, x, y):
-        sprite.Sprite.__init__(self)
+        pygame.sprite.Sprite.__init__(self)
         self.image = Hammer.hammer_image1
         self.rect = self.image.get_rect().move(x, y)
         self.hammer_animation = True
@@ -222,21 +226,21 @@ class Hammer(sprite.Sprite):
             self.hammer_animation = True
 
 
-class Spell(sprite.Sprite):
+class Spell(pygame.sprite.Sprite):
     spell_image1 = load_image('spell1.png', pygame.Color('white'))
     spell_image2 = load_image('spell2.png', pygame.Color('white'))
     spell_image1 = pygame.transform.scale(spell_image1, (30, 30))
     spell_image2 = pygame.transform.scale(spell_image2, (32, 32))
 
     def __init__(self, x, y):
-        sprite.Sprite.__init__(self)
+        pygame.sprite.Sprite.__init__(self)
         self.image = Spell.spell_image1
         self.rect = self.image.get_rect().move(x, y)
         self.c = 0
         self.images = {
-                       Spell.spell_image1: Spell.spell_image2,
-                       Spell.spell_image2: Spell.spell_image1
-                       }
+            Spell.spell_image1: Spell.spell_image2,
+            Spell.spell_image2: Spell.spell_image1
+        }
 
     def update(self):
         self.image = self.images[self.image]
@@ -247,26 +251,74 @@ def terminate():
     sys.exit()
 
 
-buttons_start = pygame.sprite.Group()
-play = pygame.sprite.Sprite()
-info = pygame.sprite.Sprite()
-buttons_start.add(play)
-buttons_start.add(info)
+def start_screen():
+    play = pygame.sprite.Sprite()
+    info = pygame.sprite.Sprite()
+    buttons_start.add(play)
+    buttons_start.add(info)
 
+    play_images = [load_image('menu_play1.png'), load_image('menu_play2.png')]
+    play.image = play_images[0]
+    play.rect = play.image.get_rect()
+    play.rect.x = 290
+    play.rect.y = 300
+
+    info_images = [load_image('menu_info1.png'), load_image('menu_info2.png')]
+    info.image = info_images[0]
+    info.rect = info.image.get_rect()
+    info.rect.x = 290
+    info.rect.y = 400
+
+    running = True
+    while running:
+        screen.fill((30, 30, 30))
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEMOTION:  # находится ли курсор на одной из кнопок
+                x, y = event.pos
+                if play.rect.collidepoint(x, y):
+                    play.image = play_images[1]
+                else:
+                    play.image = play_images[0]
+                if info.rect.collidepoint(x, y):
+                    info.image = info_images[1]
+                else:
+                    info.image = info_images[0]
+            elif event.type == pygame.MOUSEBUTTONUP:  # проверяем, если было нажатие на стартовом экране
+                x, y = event.pos
+                if info.rect.collidepoint(x, y):
+                    pass
+                elif play.rect.collidepoint(x, y):
+                    running = False
+        buttons_start.draw(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+buttons_start = pygame.sprite.Group()
 player = pygame.sprite.Group()
-tiles_group = pygame.sprite.Group()
 platform_group = pygame.sprite.Group()
 stairs_group = pygame.sprite.Group()
+tiles_group = pygame.sprite.Group()
+life_group = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
 
-
-# start_screen()
 hero = Player(400, 850)
 hammer = Hammer(90, 770)
 spell = Spell(650, 400)
 all_sprites.add(hero)
 all_sprites.add(hammer)
 all_sprites.add(spell)
+
+life_images = [pygame.transform.scale(load_image('life.png', (255, 255, 255)), (33, 30)),
+               pygame.transform.scale(load_image('life2.png', (255, 255, 255)), (33, 30))]
+for i in range(10, 160, 50):  # жизни
+    life = pygame.sprite.Sprite()
+    life_group.add(life)
+    life.image = life_images[1]
+    life.rect = life.image.get_rect().move(10, i)
+score = 0
 
 left = right = up = down = False
 running = True
@@ -278,38 +330,44 @@ level_height = 1000
 
 camera = Camera(camera_state, level_width, level_height)
 
+start_screen()
+running = True
 while running:
-    clock.tick(FPS)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-
-        if event.type == KEYDOWN and event.key == K_LEFT:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
             left = True
-        if event.type == KEYDOWN and event.key == K_RIGHT:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
             right = True
-        if event.type == KEYDOWN and event.key == K_UP:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
             up = True
-        if event.type == KEYDOWN and event.key == K_DOWN:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
             down = True
 
-        if event.type == KEYUP and event.key == K_DOWN:
+        if event.type == pygame.KEYUP and event.key == pygame.K_DOWN:
             down = False
-        if event.type == KEYUP and event.key == K_RIGHT:
+        if event.type == pygame.KEYUP and event.key == pygame.K_RIGHT:
             right = False
-        if event.type == KEYUP and event.key == K_LEFT:
+        if event.type == pygame.KEYUP and event.key == pygame.K_LEFT:
             left = False
-        if event.type == KEYUP and event.key == K_UP:
+        if event.type == pygame.KEYUP and event.key == pygame.K_UP:
             up = False
-
     screen.fill((30, 30, 30))
-
     camera.update(hero)
     for spr in all_sprites:
         screen.blit(spr.image, camera.apply(spr))
 
+    pygame.draw.rect(screen, pygame.Color('red'), (790, 10, 100, 30), 1)
+    font = pygame.font.Font(None, 35)
+    text = font.render(str(score).rjust(6, '0'), 1, (255, 0, 0))  # счет
+    screen.blit(text, (799, 14))
+
     hero.update(left, right, up, platforms)
     spell.update()
     hammer.update()
+    life_group.draw(screen)
+    clock.tick(FPS)
     pygame.display.flip()
+# завершение работы:
 pygame.quit()
