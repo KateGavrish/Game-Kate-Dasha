@@ -130,6 +130,8 @@ class Player(pygame.sprite.Sprite):
     def collide(self, xv, yv, platforms):
         if pygame.sprite.collide_rect(self, hammer):
             print(1)  # доделать молот
+        if pygame.sprite.collide_rect(self, spell):
+            print(2)  # доделать зелье
         for s in stairs:
             if pygame.sprite.collide_rect(self, s):
                 if yv > 0 and down:
@@ -189,7 +191,59 @@ class Camera(object):
 
 
 class Monster(pygame.sprite.Sprite):
-    pass
+
+    still1 = load_image('kongstill0.png', pygame.Color('black'))
+    still1 = pygame.transform.scale(still1, (72, 80))
+    still2 = load_image('kongstill1.png', pygame.Color('black'))
+    still2 = pygame.transform.scale(still2, (72, 80))
+    still3 = load_image('kongstill11.png', pygame.Color('black'))
+    still3 = pygame.transform.scale(still3, (72, 80))
+
+    left1 = load_image('kong21.png', pygame.Color('black'))
+    left1 = pygame.transform.scale(left1, (72, 80))
+    left2 = load_image('kong11.png', pygame.Color('black'))
+    left2 = pygame.transform.scale(left2, (72, 80))
+
+    right1 = load_image('kong2.png', pygame.Color('black'))
+    right1 = pygame.transform.scale(right1, (72, 80))
+    right2 = load_image('kong3.png', pygame.Color('black'))
+    right2 = pygame.transform.scale(right2, (72, 80))
+
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.xv = 0
+        self.startX = x
+        self.startY = y
+        self.onPlat = True
+        self.image = Monster.right1
+        self.rect = pygame.Rect(x, y, 25, 35)
+        self.animation = True
+
+    def update(self):
+        a = {Monster.left1: Monster.left2, Monster.left2: Monster.left1,
+             Monster.right1: Monster.right2, Monster.right2: Monster.right1}
+        if not self.animation:
+            self.xv = -SPEED
+            if self.image == (Monster.right1 or Monster.still1 or Monster.right2):
+                self.image = Monster.left1
+            else:
+                self.image = a[self.image]
+        if self.animation:
+            self.xv = SPEED
+            if self.image != (Monster.right1 or Monster.right2):
+                self.image = Monster.right1
+            else:
+                self.image = a[self.image]
+        if self.animation == 3:
+            self.xv = 0
+            self.image = Monster.still1
+            pass
+
+        if self.rect.x == 270:
+            self.animation = False
+        elif self.rect.x == 120:
+            self.animation = True
+        self.rect.x += self.xv
 
 
 class Hammer(pygame.sprite.Sprite):
@@ -307,9 +361,11 @@ all_sprites = pygame.sprite.Group()
 hero = Player(400, 850)
 hammer = Hammer(90, 770)
 spell = Spell(650, 400)
+monster = Monster(120, 160)
 all_sprites.add(hero)
 all_sprites.add(hammer)
 all_sprites.add(spell)
+all_sprites.add(monster)
 
 life_images = [pygame.transform.scale(load_image('life.png', (255, 255, 255)), (33, 30)),
                pygame.transform.scale(load_image('life2.png', (255, 255, 255)), (33, 30))]
@@ -366,6 +422,7 @@ while running:
     hero.update(left, right, up, platforms)
     spell.update()
     hammer.update()
+    monster.update()
     life_group.draw(screen)
     clock.tick(FPS)
     pygame.display.flip()
