@@ -12,7 +12,7 @@ WIDTH = 22
 HEIGHT = 32
 JUMP = 5
 GRAVITY = 0.45
-FPS = 40
+FPS = 50
 
 # основной персонаж
 player = None
