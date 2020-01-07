@@ -35,17 +35,17 @@ def generate_level():
     platforms = []
     stairs = []
     [platforms.append(Platforms(280 + 50 * i, 150, 1)) for i in range(3)]
-    [platforms.append(Platforms(80 + 50 * i, 240, -1)) for i in range(8)]
+    [platforms.append(Platforms(80 + 50 * i, 240, 1)) for i in range(8)]
     [platforms.append(Platforms(480 + 50 * i, 240 + 2 * i, 1)) for i in range(4)]
     [platforms.append(Platforms(180 + 50 * i, 268 + 70 - 2 * i, -1)) for i in range(12)]
     [platforms.append(Platforms(80 + 50 * i, 240 + 170 + 3 * i, 1)) for i in range(7)]
-    [platforms.append(Platforms(430 + 50 * i, 240 + 190, -1)) for i in range(3)]
-    [platforms.append(Platforms(180 + 50 * i, 420 + 100 - 2 * i, 1)) for i in range(12)]
-    [platforms.append(Platforms(80 + 50 * i, 610 + 3 * i, -1)) for i in range(7)]
-    [platforms.append(Platforms(430 + 50 * i, 630, -1)) for i in range(3)]
-    [platforms.append(Platforms(180 + 50 * i, 750 - 2 * i, 1)) for i in range(12)]
-    [platforms.append(Platforms(80 + 50 * i, 830, -1)) for i in range(3)]
-    [platforms.append(Platforms(80 + 50 * i, 900, -1)) for i in range(15)]
+    [platforms.append(Platforms(430 + 50 * i, 240 + 190, 1)) for i in range(3)]
+    [platforms.append(Platforms(180 + 50 * i, 420 + 100 - 2 * i, -1)) for i in range(12)]
+    [platforms.append(Platforms(80 + 50 * i, 610 + 3 * i, 1)) for i in range(7)]
+    [platforms.append(Platforms(430 + 50 * i, 630, 1)) for i in range(3)]
+    [platforms.append(Platforms(180 + 50 * i, 750 - 2 * i, -1)) for i in range(12)]
+    [platforms.append(Platforms(80 + 50 * i, 830, 1)) for i in range(3)]
+    [platforms.append(Platforms(80 + 50 * i, 900, 1)) for i in range(15)]
 
     stairs.append(Stairs(680, 248))
     stairs.append(Stairs(155, 338))
@@ -56,9 +56,10 @@ def generate_level():
     stairs.append(Stairs(220, 825))
     stairs.append(Stairs(430, 150))
 
-    buck_v = randint(30, 80)
+    buck_v = randint(1, 7)
+    count_life = 3
 
-    return platforms, stairs, buck_v
+    return platforms, stairs, buck_v, count_life
 
 
 def camera_state(camera, target_rect):
@@ -154,10 +155,12 @@ class Player(pygame.sprite.Sprite):
                     self.rect.top = plat.rect.bottom
                     self.yv = 0
 
+
 class Buck(pygame.sprite.Sprite):
     buck_images = [load_image('buck3.png', (255, 255, 255)),
                    pygame.transform.scale(load_image('buck2.png', (255, 255, 255)), (50, 47)),
                    pygame.transform.scale(load_image('buck.png', (255, 255, 255)), (50, 47))]
+
     def __init__(self, v):
         super().__init__(all_sprites, bucks_group)
         self.buck_change = {Buck.buck_images[1]: Buck.buck_images[2],
@@ -166,8 +169,7 @@ class Buck(pygame.sprite.Sprite):
         self.v = v
         self.yv = 1
         self.xv = v
-        # self.rect = self.image.get_rect().move(129, 208)
-        self.rect = self.image.get_rect().move(721, 496)
+        self.rect = self.image.get_rect().move(129, 208)
 
     def update(self):
         self.is_on_stair()
@@ -216,6 +218,7 @@ class Platforms(pygame.sprite.Sprite):
         self.image = Platforms.platform_image
         self.image = pygame.transform.scale(self.image, (50, 20))  # размер платформы
         self.rect = self.image.get_rect().move(x, y)
+        self.v = v
 
 
 class Camera(object):
@@ -366,7 +369,7 @@ score = 0
 left = right = up = down = False
 running = True
 
-platforms, stairs, bucks_v = generate_level()
+platforms, stairs, bucks_v, count_life = generate_level()
 
 level_width = 900
 level_height = 1000
@@ -376,6 +379,10 @@ camera = Camera(camera_state, level_width, level_height)
 start_screen()
 running = True
 while running:
+    if pygame.time.get_ticks() % 40 == 0 and randint(0, 1):
+        Buck(bucks_v)
+    if count_life == 0:
+        running = False
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -409,6 +416,7 @@ while running:
     hero.update(left, right, up, platforms)
     spell.update()
     hammer.update()
+    bucks_group.update()
     life_group.draw(screen)
     clock.tick(FPS)
     pygame.display.flip()
