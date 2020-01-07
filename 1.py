@@ -1,6 +1,7 @@
 import pygame
 import os
 import sys
+from random import randint
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -33,29 +34,31 @@ def load_image(name, colorkey=None):
 def generate_level():
     platforms = []
     stairs = []
-    [platforms.append(Platforms(280 + 50 * i, 150)) for i in range(3)]
-    [platforms.append(Platforms(80 + 50 * i, 240)) for i in range(8)]
-    [platforms.append(Platforms(480 + 50 * i, 240 + 2 * i)) for i in range(4)]
-    [platforms.append(Platforms(180 + 50 * i, 268 + 70 - 2 * i)) for i in range(12)]
-    [platforms.append(Platforms(80 + 50 * i, 240 + 170 + 3 * i)) for i in range(7)]
-    [platforms.append(Platforms(430 + 50 * i, 240 + 190)) for i in range(3)]
-    [platforms.append(Platforms(180 + 50 * i, 420 + 100 - 2 * i)) for i in range(12)]
-    [platforms.append(Platforms(80 + 50 * i, 610 + 3 * i)) for i in range(7)]
-    [platforms.append(Platforms(430 + 50 * i, 630)) for i in range(3)]
-    [platforms.append(Platforms(180 + 50 * i, 750 - 2 * i)) for i in range(12)]
-    [platforms.append(Platforms(80 + 50 * i, 830)) for i in range(3)]
-    [platforms.append(Platforms(80 + 50 * i, 900)) for i in range(15)]
+    [platforms.append(Platforms(280 + 50 * i, 150, 1)) for i in range(3)]
+    [platforms.append(Platforms(80 + 50 * i, 240, -1)) for i in range(8)]
+    [platforms.append(Platforms(480 + 50 * i, 240 + 2 * i, 1)) for i in range(4)]
+    [platforms.append(Platforms(180 + 50 * i, 268 + 70 - 2 * i, -1)) for i in range(12)]
+    [platforms.append(Platforms(80 + 50 * i, 240 + 170 + 3 * i, 1)) for i in range(7)]
+    [platforms.append(Platforms(430 + 50 * i, 240 + 190, -1)) for i in range(3)]
+    [platforms.append(Platforms(180 + 50 * i, 420 + 100 - 2 * i, 1)) for i in range(12)]
+    [platforms.append(Platforms(80 + 50 * i, 610 + 3 * i, -1)) for i in range(7)]
+    [platforms.append(Platforms(430 + 50 * i, 630, -1)) for i in range(3)]
+    [platforms.append(Platforms(180 + 50 * i, 750 - 2 * i, 1)) for i in range(12)]
+    [platforms.append(Platforms(80 + 50 * i, 830, -1)) for i in range(3)]
+    [platforms.append(Platforms(80 + 50 * i, 900, -1)) for i in range(15)]
 
     stairs.append(Stairs(680, 248))
     stairs.append(Stairs(155, 338))
-    stairs.append(Stairs(580, 430))
-    stairs.append(Stairs(155, 520))
-    stairs.append(Stairs(580, 630))
-    stairs.append(Stairs(155, 750))
-    stairs.append(Stairs(220, 830))
+    stairs.append(Stairs(580, 425))
+    stairs.append(Stairs(155, 515))
+    stairs.append(Stairs(580, 625))
+    stairs.append(Stairs(155, 745))
+    stairs.append(Stairs(220, 825))
     stairs.append(Stairs(430, 150))
 
-    return platforms, stairs
+    buck_v = randint(30, 80)
+
+    return platforms, stairs, buck_v
 
 
 def camera_state(camera, target_rect):
@@ -105,6 +108,7 @@ class Player(pygame.sprite.Sprite):
 
         self.rect.x += self.xv  # переносим свои положение на xv
         self.collide(self.xv, 0, platforms)
+        # print(self.rect.x, self.rect.y)
 
     def collide(self, xv, yv, platforms):
         if pygame.sprite.collide_rect(self, hammer):
@@ -131,8 +135,47 @@ class Player(pygame.sprite.Sprite):
                     self.yv = 0
 
 
-class Buck(pygame.sprite.Group):
-    pass
+class Buck(pygame.sprite.Sprite):
+    buck_images = [load_image('buck3.png', (255, 255, 255)),
+                   pygame.transform.scale(load_image('buck2.png', (255, 255, 255)), (50, 47)),
+                   pygame.transform.scale(load_image('buck.png', (255, 255, 255)), (50, 47))]
+
+    def __init__(self, v):
+        super().__init__(all_sprites, bucks_group)
+        self.buck_change = {Buck.buck_images[1]: Buck.buck_images[2],
+                            Buck.buck_images[2]: Buck.buck_images[1]}
+        self.image = Buck.buck_images[0]
+        self.v = v
+        self.yv = 1
+        self.xv = v
+        # self.rect = self.image.get_rect().move(129, 208)
+        self.rect = self.image.get_rect().move(721, 496)
+
+    def update(self):
+        self.is_on_stair()
+        self.is_on_plat()
+        self.rect.x += self.xv
+
+    def is_on_stair(self):
+        for stair in stairs_group:
+            if pygame.sprite.collide_rect(self, stair) and self.rect.top < stair.rect.top:
+                self.image = self.buck_change.get(self.image, Buck.buck_images[1])
+                self.xv = 0
+                self.yv = 2
+
+    def is_on_plat(self):
+        for platform in platform_group:
+            if pygame.sprite.collide_rect(self, platform):
+                self.rect.bottom = platform.rect.top + 1
+                self.xv = self.v * platform.v
+                if self.yv == 2:
+                    self.image = Buck.buck_images[0]
+                    self.xv = self.v * platform.v
+                else:
+                    self.image = pygame.transform.rotate(self.image, 90)
+                self.yv = 1
+                return
+        self.rect.y += self.yv
 
 
 class Stairs(pygame.sprite.Sprite):
@@ -141,7 +184,7 @@ class Stairs(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__(stairs_group, all_sprites)
         self.image = Stairs.stairs_image
-        self.image = pygame.transform.scale(self.image, (30, 100))  # размер лестницы
+        self.image = pygame.transform.scale(self.image, (33, 100))  # размер лестницы
         self.rect = self.image.get_rect().move(x, y)
         # self.rect.x = x
         # self.rect.y = y
@@ -150,11 +193,12 @@ class Stairs(pygame.sprite.Sprite):
 class Platforms(pygame.sprite.Sprite):
     platform_image = load_image('platform.png', pygame.Color('white'))
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, v):
         super().__init__(platform_group, all_sprites)
         self.image = Platforms.platform_image
         self.image = pygame.transform.scale(self.image, (50, 30))  # размер платформы
         self.rect = self.image.get_rect().move(x, y)
+        self.v = v
         # self.rect.x = x
         # self.rect.y = y
 
@@ -285,6 +329,7 @@ platform_group = pygame.sprite.Group()
 stairs_group = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 life_group = pygame.sprite.Group()
+bucks_group = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
 
 hero = Player(400, 850)
@@ -306,7 +351,7 @@ score = 0
 left = right = up = down = False
 running = True
 
-platforms, stairs = generate_level()
+platforms, stairs, bucks_v = generate_level()
 
 level_width = 900
 level_height = 1000
@@ -315,6 +360,8 @@ camera = Camera(camera_state, level_width, level_height)
 
 start_screen()
 running = True
+
+Buck(-2)
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -338,6 +385,7 @@ while running:
             up = False
     screen.fill((30, 30, 30))
     camera.update(hero)
+    bucks_group.update()
     for spr in all_sprites:
         screen.blit(spr.image, camera.apply(spr))
 
