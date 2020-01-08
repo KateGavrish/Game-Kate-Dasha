@@ -13,10 +13,7 @@ WIDTH = 22
 HEIGHT = 32
 JUMP = 5
 GRAVITY = 0.45
-FPS = 40
-
-# основной персонаж
-player = None
+FPS = 50
 
 
 def load_image(name, colorkey=None):
@@ -44,10 +41,10 @@ def generate_level():
     [platforms.append(Platforms(80 + 50 * i, 610 + 3 * i, 1)) for i in range(7)]
     [platforms.append(Platforms(430 + 50 * i, 630, 1)) for i in range(3)]
     [platforms.append(Platforms(180 + 50 * i, 750 - 2 * i, -1)) for i in range(12)]
-    [platforms.append(Platforms(80 + 50 * i, 830, 1)) for i in range(3)]
-    [platforms.append(Platforms(80 + 50 * i, 900, 1)) for i in range(15)]
+    [platforms.append(Platforms(80 + 50 * i, 830, -1)) for i in range(3)]
+    [platforms.append(Platforms(80 + 50 * i, 900, -1)) for i in range(15)]
 
-    stairs.append(Stairs(680, 248))
+    stairs.append(Stairs(680, 245))
     stairs.append(Stairs(155, 338))
     stairs.append(Stairs(580, 425))
     stairs.append(Stairs(155, 515))
@@ -56,10 +53,7 @@ def generate_level():
     stairs.append(Stairs(220, 825))
     stairs.append(Stairs(430, 150))
 
-    buck_v = randint(1, 7)
-    count_life = 3
-
-    return platforms, stairs, buck_v, count_life
+    return platforms, stairs
 
 
 def camera_state(camera, target_rect):
@@ -99,7 +93,7 @@ class Player(pygame.sprite.Sprite):
         self.spell = None
         self.hammer = None
 
-    def update(self, left, right, up, platforms):
+    def update(self, left, right, up, down, platforms, stairs):
         a = {Player.left1: Player.left2, Player.left2: Player.left1,
              Player.right1: Player.right2, Player.right2: Player.right1}
         if left:
@@ -126,14 +120,16 @@ class Player(pygame.sprite.Sprite):
 
         self.onPlat = False
         self.rect.y += self.yv
-        self.collide(0, self.yv, platforms)
+        self.collide(0, self.yv, platforms, stairs, down)
 
         self.rect.x += self.xv  # переносим свои положение на xv
-        self.collide(self.xv, 0, platforms)
+        self.collide(self.xv, 0, platforms, stairs, down)
 
-    def collide(self, xv, yv, platforms):
+    def collide(self, xv, yv, platforms, stairs, down):
         if pygame.sprite.collide_rect(self, hammer):
             print(1)  # доделать молот
+        if pygame.sprite.collide_rect(self, spell):
+            print(2)  # доделать зелье
         for s in stairs:
             if pygame.sprite.collide_rect(self, s):
                 if yv > 0 and down:
@@ -155,6 +151,11 @@ class Player(pygame.sprite.Sprite):
                     self.rect.top = plat.rect.bottom
                     self.yv = 0
 
+    def death(self):
+        pygame.time.wait(500)
+        self.rect.x = self.startX
+        self.rect.y = self.startY
+
 
 class Buck(pygame.sprite.Sprite):
     buck_images = [load_image('buck3.png', (255, 255, 255)),
@@ -172,9 +173,17 @@ class Buck(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(129, 208)
 
     def update(self):
+        self.player_collide()
         self.is_on_stair()
         self.is_on_plat()
         self.rect.x += self.xv
+
+    def player_collide(self):
+        global count_life
+        if pygame.sprite.collide_rect(self, hero):
+            count_life -= 1
+            lives[count_life].image = life_images[0]
+            hero.death()
 
     def is_on_stair(self):
         for stair in stairs_group:
@@ -204,10 +213,8 @@ class Stairs(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__(stairs_group, all_sprites)
         self.image = Stairs.stairs_image
-        self.image = pygame.transform.scale(self.image, (33, 100))  # размер лестницы
+        self.image = pygame.transform.scale(self.image, (30, 100))  # размер лестницы
         self.rect = self.image.get_rect().move(x, y)
-        # self.rect.x = x
-        # self.rect.y = y
 
 
 class Platforms(pygame.sprite.Sprite):
@@ -233,8 +240,60 @@ class Camera(object):
         self.state = self.camera_func(self.state, target.rect)
 
 
-class Monster(pygame.sprite.Group):
-    pass
+class Monster(pygame.sprite.Sprite):
+
+    still1 = load_image('kongstill0.png', pygame.Color('black'))
+    still1 = pygame.transform.scale(still1, (72, 80))
+    still2 = load_image('kongstill1.png', pygame.Color('black'))
+    still2 = pygame.transform.scale(still2, (72, 80))
+    still3 = load_image('kongstill11.png', pygame.Color('black'))
+    still3 = pygame.transform.scale(still3, (72, 80))
+
+    left1 = load_image('kong21.png', pygame.Color('black'))
+    left1 = pygame.transform.scale(left1, (72, 80))
+    left2 = load_image('kong11.png', pygame.Color('black'))
+    left2 = pygame.transform.scale(left2, (72, 80))
+
+    right1 = load_image('kong2.png', pygame.Color('black'))
+    right1 = pygame.transform.scale(right1, (72, 80))
+    right2 = load_image('kong3.png', pygame.Color('black'))
+    right2 = pygame.transform.scale(right2, (72, 80))
+
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.xv = 0
+        self.startX = x
+        self.startY = y
+        self.onPlat = True
+        self.image = Monster.right1
+        self.rect = pygame.Rect(x, y, 25, 35)
+        self.animation = True
+
+    def update(self):
+        a = {Monster.left1: Monster.left2, Monster.left2: Monster.left1,
+             Monster.right1: Monster.right2, Monster.right2: Monster.right1}
+        if not self.animation:
+            self.xv = -SPEED
+            if self.image == (Monster.right1 or Monster.still1 or Monster.right2):
+                self.image = Monster.left1
+            else:
+                self.image = a[self.image]
+        if self.animation:
+            self.xv = SPEED
+            if self.image != (Monster.right1 or Monster.right2):
+                self.image = Monster.right1
+            else:
+                self.image = a[self.image]
+        if self.animation == 3:
+            self.xv = 0
+            self.image = Monster.still1
+            pass
+
+        if self.rect.x == 270:
+            self.animation = False
+        elif self.rect.x == 120:
+            self.animation = True
+        self.rect.x += self.xv
 
 
 class Hammer(pygame.sprite.Sprite):
@@ -335,10 +394,89 @@ def start_screen():
                 if info.rect.collidepoint(x, y):
                     pass
                 elif play.rect.collidepoint(x, y):
-                    running = False
+                    game()
+                    break
         buttons_start.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
+
+
+def death_screen():
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                start_screen()
+                running = False
+        screen.fill((30, 30, 30))
+        pygame.draw.rect(screen, pygame.Color('red'), (160, 245, 580, 150), 5)
+        font = pygame.font.Font(None, 150)
+        text = font.render('Game over', 1, pygame.Color('red'))
+        font2 = pygame.font.Font(None, 50)
+        text2 = font2.render('Press space to continue', 1, pygame.Color('red'))
+        screen.blit(text, (170, 270))
+        screen.blit(text2, (250, 420))
+        pygame.display.flip()
+
+
+def game():
+    global count_life
+    for i in range(3):
+        lives[i].image = life_images[1]
+    score = 0
+    bucks_v = randint(1, 7)
+    count_life = 3
+
+    left = right = up = down = False
+
+    running = True
+    while running:
+        if pygame.time.get_ticks() % 40 == 0 and randint(0, 1):
+            Buck(bucks_v)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
+                left = True
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
+                right = True
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
+                up = True
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
+                down = True
+
+            if event.type == pygame.KEYUP and event.key == pygame.K_DOWN:
+                down = False
+            if event.type == pygame.KEYUP and event.key == pygame.K_RIGHT:
+                right = False
+            if event.type == pygame.KEYUP and event.key == pygame.K_LEFT:
+                left = False
+            if event.type == pygame.KEYUP and event.key == pygame.K_UP:
+                up = False
+        screen.fill((30, 30, 30))
+        camera.update(hero)
+        for spr in all_sprites:
+            screen.blit(spr.image, camera.apply(spr))
+
+        if count_life <= 0:
+            death_screen()
+            break
+
+        pygame.draw.rect(screen, pygame.Color('red'), (790, 10, 100, 30), 1)
+        font = pygame.font.Font(None, 35)
+        text = font.render(str(score).rjust(6, '0'), 1, (255, 0, 0))  # счет
+        screen.blit(text, (799, 14))
+
+        hero.update(left, right, up, down, platforms, stairs)
+        spell.update()
+        hammer.update()
+        bucks_group.update()
+        monster.update()
+        life_group.draw(screen)
+        clock.tick(FPS)
+        pygame.display.flip()
 
 
 buttons_start = pygame.sprite.Group()
@@ -350,26 +488,26 @@ life_group = pygame.sprite.Group()
 bucks_group = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
 
+platforms, stairs = generate_level()
 hero = Player(400, 850)
 hammer = Hammer(90, 770)
 spell = Spell(650, 400)
+monster = Monster(120, 160)
 all_sprites.add(hero)
 all_sprites.add(hammer)
 all_sprites.add(spell)
+all_sprites.add(monster)
 
 life_images = [pygame.transform.scale(load_image('life.png', (255, 255, 255)), (33, 30)),
                pygame.transform.scale(load_image('life2.png', (255, 255, 255)), (33, 30))]
+lives = []
 for i in range(10, 160, 50):  # жизни
     life = pygame.sprite.Sprite()
     life_group.add(life)
     life.image = life_images[1]
     life.rect = life.image.get_rect().move(10, i)
-score = 0
-
-left = right = up = down = False
-running = True
-
-platforms, stairs, bucks_v, count_life = generate_level()
+    lives.append(life)
+count_life = 3
 
 level_width = 900
 level_height = 1000
@@ -377,48 +515,6 @@ level_height = 1000
 camera = Camera(camera_state, level_width, level_height)
 
 start_screen()
-running = True
-while running:
-    if pygame.time.get_ticks() % 40 == 0 and randint(0, 1):
-        Buck(bucks_v)
-    if count_life == 0:
-        running = False
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-            left = True
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-            right = True
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-            up = True
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-            down = True
 
-        if event.type == pygame.KEYUP and event.key == pygame.K_DOWN:
-            down = False
-        if event.type == pygame.KEYUP and event.key == pygame.K_RIGHT:
-            right = False
-        if event.type == pygame.KEYUP and event.key == pygame.K_LEFT:
-            left = False
-        if event.type == pygame.KEYUP and event.key == pygame.K_UP:
-            up = False
-    screen.fill((30, 30, 30))
-    camera.update(hero)
-    for spr in all_sprites:
-        screen.blit(spr.image, camera.apply(spr))
-
-    pygame.draw.rect(screen, pygame.Color('red'), (790, 10, 100, 30), 1)
-    font = pygame.font.Font(None, 35)
-    text = font.render(str(score).rjust(6, '0'), 1, (255, 0, 0))  # счет
-    screen.blit(text, (799, 14))
-
-    hero.update(left, right, up, platforms)
-    spell.update()
-    hammer.update()
-    bucks_group.update()
-    life_group.draw(screen)
-    clock.tick(FPS)
-    pygame.display.flip()
 # завершение работы:
 pygame.quit()
