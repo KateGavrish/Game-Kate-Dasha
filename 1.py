@@ -430,6 +430,7 @@ def game():
     count_life = 3
 
     left = right = up = down = False
+    hummer_activated = False
 
     running = True
     while running:
@@ -455,6 +456,12 @@ def game():
                 left = False
             if event.type == pygame.KEYUP and event.key == pygame.K_UP:
                 up = False
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_s:
+                hummer_activated = True
+            if event.type == pygame.KEYUP and event.key == pygame.K_s:
+                hummer_activated = True
+
         screen.fill((30, 30, 30))
         camera.update(hero)
         for spr in all_sprites:
