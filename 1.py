@@ -95,6 +95,7 @@ class Player(pygame.sprite.Sprite):
         self.spell = None
         self.hammer = None
         self.hammer_activated = False
+        self.r = 0
 
     def update(self, left, right, up, down, platforms, stairs, hammer_activated):
         self.hammer_activated = hammer_activated
@@ -146,6 +147,11 @@ class Player(pygame.sprite.Sprite):
             self.hammer = True
         if pygame.sprite.collide_rect(self, spell):
             self.spell = True
+            m = 29
+            pygame.time.set_timer(m, 10000)
+            pygame.time.set_timer(28, 1000)
+            self.r = 10
+
         for s in stairs:
             if pygame.sprite.collide_rect(self, s):
                 if yv > 0 and down:
@@ -198,7 +204,7 @@ class Buck(pygame.sprite.Sprite):
     def player_collide(self):
         global count_life, a
         a = 31
-        if pygame.sprite.collide_rect(self, hero) and not hero.hammer_activated:
+        if pygame.sprite.collide_rect(self, hero) and (not hero.hammer_activated and not hero.spell):
             count_life -= 1
             lives[count_life].image = life_images[0]
             hero.death()
@@ -262,7 +268,6 @@ class Camera(object):
 
 
 class Monster(pygame.sprite.Sprite):
-
     still1 = load_image('kongstill0.png', pygame.Color('black'))
     still1 = pygame.transform.scale(still1, (72, 80))
     still2 = load_image('kongstill1.png', pygame.Color('black'))
@@ -454,13 +459,12 @@ def game():
 
     left = right = up = down = False
     hammer_activated = False
-
+    font = pygame.font.Font(None, 50)
     running = True
     while running:
         if pygame.time.get_ticks() % 40 == 0 and randint(0, 1):
             Buck(bucks_v)
         for event in pygame.event.get():
-            print(event)
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
@@ -493,8 +497,16 @@ def game():
                         bucks_group.remove(spr)
                         all_sprites.remove(spr)
                         break
+            if event.type == 29:
+                hero.spell = False
+            if event.type == 28:
+                hero.r -= 1
+                if hero.r < 0:
+                    hero.r = 0
 
         screen.fill((30, 30, 30))
+        text = font.render(str(hero.r), 1, pygame.Color('red'))
+        screen.blit(text, (850, 80))
         camera.update(hero)
         for spr in all_sprites:
             screen.blit(spr.image, camera.apply(spr))
