@@ -80,6 +80,8 @@ class Player(pygame.sprite.Sprite):
     right1 = pygame.transform.scale(right1, (22, 32))
     right2 = load_image('right2.png', pygame.Color('black'))
     right2 = pygame.transform.scale(right2, (22, 32))
+    still_hammer = load_image('still_with_hammer.png', pygame.Color('white'))
+    still_hammer = pygame.transform.scale(still_hammer, (40, 32))
 
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
@@ -92,28 +94,42 @@ class Player(pygame.sprite.Sprite):
         self.rect = pygame.Rect(x, y, WIDTH, HEIGHT)
         self.spell = None
         self.hammer = None
+        self.hammer_activated = False
 
-    def update(self, left, right, up, down, platforms, stairs):
+    def update(self, left, right, up, down, platforms, stairs, hammer_activated):
+        self.hammer_activated = hammer_activated
         a = {Player.left1: Player.left2, Player.left2: Player.left1,
              Player.right1: Player.right2, Player.right2: Player.right1}
         if left:
             self.xv = -SPEED
-            if self.image == Player.still:
-                self.image = Player.left1
-            else:
-                self.image = a[self.image]
+            if not hammer_activated:
+                if self.image == (Player.still or Player.still_hammer or Player.right2 or Player.right1):
+                    self.image = Player.left1
+                else:
+                    try:
+                        self.image = a[self.image]
+                    except:
+                        self.image = Player.left1
         if right:
             self.xv = SPEED
-            if self.image == Player.still:
-                self.image = Player.right1
-            else:
-                self.image = a[self.image]
+            if not hammer_activated:
+                if self.image == (Player.still or Player.still_hammer or Player.left2 or Player.left1):
+                    self.image = Player.right1
+                else:
+                    try:
+                        self.image = a[self.image]
+                    except:
+                        self.image = Player.right1
         if not (left or right):
             self.xv = 0
-            self.image = Player.still
+            if not hammer_activated:
+                self.image = Player.still
         if up:
             if self.onPlat:
                 self.yv = -JUMP
+
+        if hammer_activated:
+            self.image = Player.still_hammer
 
         if not self.onPlat:
             self.yv += GRAVITY
@@ -127,9 +143,9 @@ class Player(pygame.sprite.Sprite):
 
     def collide(self, xv, yv, platforms, stairs, down):
         if pygame.sprite.collide_rect(self, hammer):
-            print(1)  # доделать молот
+            self.hammer = True
         if pygame.sprite.collide_rect(self, spell):
-            print(2)  # доделать зелье
+            self.spell = True
         for s in stairs:
             if pygame.sprite.collide_rect(self, s):
                 if yv > 0 and down:
@@ -158,6 +174,7 @@ class Player(pygame.sprite.Sprite):
 
 
 class Buck(pygame.sprite.Sprite):
+    boom = load_image('boom.png', (0, 0, 0))
     buck_images = [load_image('buck3.png', (255, 255, 255)),
                    pygame.transform.scale(load_image('buck2.png', (255, 255, 255)), (50, 47)),
                    pygame.transform.scale(load_image('buck.png', (255, 255, 255)), (50, 47))]
@@ -179,11 +196,15 @@ class Buck(pygame.sprite.Sprite):
         self.rect.x += self.xv
 
     def player_collide(self):
-        global count_life
-        if pygame.sprite.collide_rect(self, hero):
+        global count_life, a
+        a = 31
+        if pygame.sprite.collide_rect(self, hero) and not hero.hammer_activated:
             count_life -= 1
             lives[count_life].image = life_images[0]
             hero.death()
+        elif pygame.sprite.collide_rect(self, hero) and hero.hammer_activated:
+            self.image = Buck.boom
+            pygame.time.set_timer(a, 100)
 
     def is_on_stair(self):
         for stair in stairs_group:
@@ -426,17 +447,20 @@ def game():
     for i in range(3):
         lives[i].image = life_images[1]
     score = 0
-    bucks_v = randint(1, 7)
+    bucks_v = randint(4, 10)
     count_life = 3
+    a = 31
+    HAMMER_UNACTIDE = 30
 
     left = right = up = down = False
-    hummer_activated = False
+    hammer_activated = False
 
     running = True
     while running:
         if pygame.time.get_ticks() % 40 == 0 and randint(0, 1):
             Buck(bucks_v)
         for event in pygame.event.get():
+            print(event)
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
@@ -457,10 +481,18 @@ def game():
             if event.type == pygame.KEYUP and event.key == pygame.K_UP:
                 up = False
 
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_s:
-                hummer_activated = True
-            if event.type == pygame.KEYUP and event.key == pygame.K_s:
-                hummer_activated = True
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_s and hero.hammer:
+                hammer_activated = True
+                pygame.time.set_timer(HAMMER_UNACTIDE, 1000)
+            if event.type == pygame.KEYUP and event.key == pygame.K_s or event.type == HAMMER_UNACTIDE:
+                hammer_activated = False
+
+            if event.type == a:
+                for spr in bucks_group:
+                    if spr.image == Buck.boom:
+                        bucks_group.remove(spr)
+                        all_sprites.remove(spr)
+                        break
 
         screen.fill((30, 30, 30))
         camera.update(hero)
@@ -476,7 +508,7 @@ def game():
         text = font.render(str(score).rjust(6, '0'), 1, (255, 0, 0))  # счет
         screen.blit(text, (799, 14))
 
-        hero.update(left, right, up, down, platforms, stairs)
+        hero.update(left, right, up, down, platforms, stairs, hammer_activated)
         spell.update()
         hammer.update()
         bucks_group.update()
