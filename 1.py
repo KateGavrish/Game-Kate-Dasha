@@ -2,6 +2,8 @@ import pygame
 import os
 import sys
 from random import randint
+import sqlite3
+from bisect import bisect_right
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -14,6 +16,7 @@ HEIGHT = 32
 JUMP = 5
 GRAVITY = 0.45
 FPS = 50
+HAMMER_UNACTIDE = 30
 
 
 def load_image(name, colorkey=None):
@@ -107,20 +110,23 @@ class Player(pygame.sprite.Sprite):
                 if self.image == (Player.still or Player.still_hammer or Player.right2 or Player.right1):
                     self.image = Player.left1
                 else:
-                    try:
-                        self.image = a[self.image]
-                    except:
-                        self.image = Player.left1
+                    # может быть лучше так?
+                    self.image = a.get(self.image, Player.left1)
+                    # try:
+                    #    self.image = a[self.image]
+                    # except:
+                    #    self.image = Player.left1
         if right:
             self.xv = SPEED
             if not hammer_activated:
                 if self.image == (Player.still or Player.still_hammer or Player.left2 or Player.left1):
                     self.image = Player.right1
                 else:
-                    try:
-                        self.image = a[self.image]
-                    except:
-                        self.image = Player.right1
+                    self.image = a.get(self.image, Player.right1)
+                    # try:
+                    #    self.image = a[self.image]
+                    # except:
+                    #    self.image = Player.right1
         if not (left or right):
             self.xv = 0
             if not hammer_activated:
@@ -194,6 +200,7 @@ class Buck(pygame.sprite.Sprite):
         self.yv = 1
         self.xv = v
         self.rect = self.image.get_rect().move(129, 208)
+        self.death = False
 
     def update(self):
         self.player_collide()
@@ -202,13 +209,16 @@ class Buck(pygame.sprite.Sprite):
         self.rect.x += self.xv
 
     def player_collide(self):
-        global count_life, a
+        global count_life, a, score
         a = 31
         if pygame.sprite.collide_rect(self, hero) and (not hero.hammer_activated and not hero.spell):
             count_life -= 1
             lives[count_life].image = life_images[0]
             hero.death()
         elif pygame.sprite.collide_rect(self, hero) and hero.hammer_activated:
+            if not self.death:
+                score += 100
+            self.death = True
             self.image = Buck.boom
             pygame.time.set_timer(a, 100)
 
@@ -384,8 +394,10 @@ def terminate():
 def start_screen():
     play = pygame.sprite.Sprite()
     info = pygame.sprite.Sprite()
+    record = pygame.sprite.Sprite()
     buttons_start.add(play)
     buttons_start.add(info)
+    buttons_start.add(record)
 
     play_images = [load_image('menu_play1.png'), load_image('menu_play2.png')]
     play.image = play_images[0]
@@ -398,6 +410,12 @@ def start_screen():
     info.rect = info.image.get_rect()
     info.rect.x = 290
     info.rect.y = 400
+
+    record_images = [load_image('menu_record1.png'), load_image('menu_record2.png')]
+    record.image = record_images[0]
+    record.rect = record.image.get_rect()
+    record.rect.x = 290
+    record.rect.y = 500
 
     running = True
     while running:
@@ -415,13 +433,20 @@ def start_screen():
                     info.image = info_images[1]
                 else:
                     info.image = info_images[0]
+                if record.rect.collidepoint(x, y):
+                    record.image = record_images[1]
+                else:
+                    record.image = record_images[0]
             elif event.type == pygame.MOUSEBUTTONUP:  # проверяем, если было нажатие на стартовом экране
                 x, y = event.pos
                 if info.rect.collidepoint(x, y):
                     pass
                 elif play.rect.collidepoint(x, y):
                     game()
-                    break
+                    running = False
+                elif record.rect.collidepoint(x, y):
+                    show_records()
+                    running = False
         buttons_start.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
@@ -434,7 +459,7 @@ def death_screen():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                start_screen()
+                enter_your_name()
                 running = False
         screen.fill((30, 30, 30))
         pygame.draw.rect(screen, pygame.Color('red'), (160, 245, 580, 150), 5)
@@ -447,22 +472,97 @@ def death_screen():
         pygame.display.flip()
 
 
+def enter_your_name():
+    global score
+    running = True
+    name = []
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if 1 in pygame.key.get_pressed():
+                if (97 <= pygame.key.get_pressed().index(1) <= 122 or 48 <= pygame.key.get_pressed().index(
+                        1) <= 57 and len(name) < 10):
+                    name.append(chr(pygame.key.get_pressed().index(1)).upper())
+                    pygame.time.delay(300)
+                elif pygame.key.get_pressed().index(1) == 8 and name:
+                    del name[-1]
+                    pygame.time.delay(300)
+                elif pygame.key.get_pressed().index(1) == 13 and name:
+                    con = sqlite3.connect('data/records.db')
+                    cur = con.cursor()
+                    result = cur.execute('''SELECT score FROM record''').fetchall()
+                    result = sorted(list(map(lambda x: x[0], result)))
+                    index = bisect_right(result, score)
+                    if index != 0:
+                        cur.execute(f'''UPDATE record
+                                        SET name = "{''.join(name)}", score = "{score}"
+                                        WHERE id = {11 - index}''')
+                        con.commit()
+                    con.close()
+                    start_screen()
+                    running = False
+        screen.fill((30, 30, 30))
+        font2 = pygame.font.Font(None, 50)
+        text2 = font2.render('Enter your name', 1, pygame.Color('red'))
+        font = pygame.font.Font(None, 150)
+        text = font.render(''.join(name), 1, pygame.Color('red'))
+        screen.blit(text, ((900 - text.get_width()) // 2, 270))
+        screen.blit(text2, ((900 - text2.get_width()) // 2, 400))
+        pygame.display.flip()
+
+
+def show_records():
+    running = True
+    con = sqlite3.connect('data/records.db')
+    cur = con.cursor()
+    records = cur.execute("""SELECT * FROM record""").fetchall()
+    records.sort(key=lambda x: -x[2])
+    text_records = []
+    font = pygame.font.Font(None, 50)
+    for i in range(min(len(records), 10)):
+        text_records.append([])
+        text_records[i].append(font.render(str(records[i][0]), 1, (255, 0, 0)))
+        text_records[i].append(font.render(str(records[i][1]), 1, (255, 0, 0)))
+        text_records[i].append(font.render(str(records[i][2]), 1, (255, 0, 0)))
+    con.close()
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYUP and event.key == pygame.K_SPACE:
+                start_screen()
+                running = False
+
+        screen.fill((30, 30, 30))
+        font = pygame.font.Font(None, 70)
+        text = font.render('RECORDS', 1, (255, 0, 0))
+        screen.blit(text, (340, 25))
+        pygame.draw.line(screen, (255, 0, 0), (100, 70), (100, 650), 3)
+        pygame.draw.line(screen, (255, 0, 0), (700, 70), (700, 650), 3)
+        for i in range(128, 593, 58):
+            pygame.draw.line(screen, (255, 0, 0), (50, i), (850, i), 3)
+        for i in range(min(len(records), 10)):
+            screen.blit(text_records[i][0], (50 + (50 - text_records[i][0].get_width()) // 2, (i - 1) * 58 + 140))
+            screen.blit(text_records[i][1], (120, (i - 1) * 58 + 140))
+            screen.blit(text_records[i][2], (710, (i - 1) * 58 + 140))
+        pygame.display.flip()
+
+
 def game():
-    global count_life
+    global count_life, score
     for i in range(3):
         lives[i].image = life_images[1]
-    score = 0
     bucks_v = randint(4, 10)
     count_life = 3
     a = 31
-    HAMMER_UNACTIDE = 30
 
     left = right = up = down = False
     hammer_activated = False
     font = pygame.font.Font(None, 50)
     running = True
     while running:
-        if pygame.time.get_ticks() % 40 == 0 and randint(0, 1):
+        if pygame.time.get_ticks() % 100 == 0 and randint(0, 1):
             Buck(bucks_v)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -559,6 +659,7 @@ for i in range(10, 160, 50):  # жизни
     life.rect = life.image.get_rect().move(10, i)
     lives.append(life)
 count_life = 3
+score = 0
 
 level_width = 900
 level_height = 1000
@@ -566,6 +667,5 @@ level_height = 1000
 camera = Camera(camera_state, level_width, level_height)
 
 start_screen()
-
 # завершение работы:
 pygame.quit()
