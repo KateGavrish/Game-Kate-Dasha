@@ -504,7 +504,7 @@ def start_screen():
             elif event.type == pygame.MOUSEBUTTONUP:  # проверяем, если было нажатие на стартовом экране
                 x, y = event.pos
                 if info.rect.collidepoint(x, y):
-                    pass
+                    show_info()
                 elif play.rect.collidepoint(x, y):
                     start.play()
                     game()
@@ -512,6 +512,9 @@ def start_screen():
                 elif record.rect.collidepoint(x, y):
                     show_records()
                     running = False
+        font = pygame.font.Font(None, 100)
+        text = font.render('Cats and grannies', 1, pygame.Color('red'))
+        screen.blit(text, ((900 - text.get_width()) // 2, 100))
         buttons_start.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
@@ -623,6 +626,33 @@ def show_records():
             screen.blit(text_records[i][1], (120, (i - 1) * 58 + 140))
             screen.blit(text_records[i][2], (710, (i - 1) * 58 + 140))
         pygame.display.flip()
+
+
+def show_info():
+    text = ['Игра Cats and Grannies приветствует вас',
+            'Бегай, взбирайся на лестницы, разбивай бочки ',
+            'и помоги Коту спасти бабульку',
+            'Для управления котом используй стрелки клавиатуры.', 'Чтобы активировать молот на 1 секунду нажми S',
+            'Нажатие Esc поставит игру на паузу',
+            'Молоток поможет не умереть от бочек,', 'а зелье сделает тебя невидимым для них на 10 секунд',
+            'Будь акуратен. Число жизней ограничено',
+            'Разбей как можно больше бочек', 'и взберись на вершину доски почета', 'Удачи)']
+    cords = [50, 110, 140, 200, 230, 260, 320, 350, 410, 460, 490, 550]
+    font = pygame.font.Font(None, 40)
+    for i in range(len(text)):
+        text[i] = font.render(text[i], 1, pygame.Color('red'))
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                terminate()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                running = False
+        for i in range(len(text)):
+            screen.blit(text[i], ((900 - text[i].get_width()) // 2, cords[i]))
+        pygame.display.flip()
+    start_screen()
 
 
 def new_level():
