@@ -3,7 +3,6 @@ import os
 import sys
 from random import randint, choice
 import sqlite3
-from bisect import bisect_right
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -58,7 +57,7 @@ def generate_level():
     [platforms.append(Platforms(80 + 50 * i, 900, -1)) for i in range(15)]
 
     stairs.append(Stairs(680, 245))
-    stairs.append(Stairs(155, 338))
+    stairs.append(Stairs(155, 334))
     stairs.append(Stairs(580, 425))
     stairs.append(Stairs(155, 515))
     stairs.append(Stairs(580, 625))
@@ -222,6 +221,8 @@ class Player(pygame.sprite.Sprite):
                     self.yv = 0
 
     def death(self):
+        global score
+        score = max(0, score - 500)
         pygame.time.wait(500)
         self.rect.x = self.startX
         self.rect.y = self.startY
@@ -429,12 +430,17 @@ class Spell(pygame.sprite.Sprite):
 
 class Door(pygame.sprite.Sprite):
     door_image = load_image('door.png', pygame.Color('white'))
+    princess_image = pygame.transform.scale(load_image('prin.png', pygame.Color('white')), (40, 60))
 
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
         self.image = Door.door_image
         self.rect = self.image.get_rect().move(x, y)
         self.level = 1
+
+    def become_princess(self):
+        self.image = Door.princess_image
+        self.rect.y = 90
 
 
 def terminate():
@@ -553,14 +559,17 @@ def enter_your_name():
                 elif pygame.key.get_pressed().index(1) == 13 and name:
                     con = sqlite3.connect('data/records.db')
                     cur = con.cursor()
-                    result = cur.execute('''SELECT score FROM record''').fetchall()
-                    result = sorted(list(map(lambda x: x[0], result)))
-                    index = bisect_right(result, score)
-                    if index != 0:
-                        cur.execute(f'''UPDATE record
-                                        SET name = "{''.join(name)}", score = "{score}"
-                                        WHERE id = {11 - index}''')
-                        con.commit()
+                    result = cur.execute('''SELECT * FROM record''').fetchall()
+                    i = 0
+                    while result[i][2] > score:
+                        i += 1
+                    if i != 10:
+                        result.insert(i, (i + 1, ''.join(name), score))
+                        for j in range(i, 10):
+                            cur.execute(f'''UPDATE record
+                                           SET name="{result[j][1]}", score={result[j][2]}
+                                           WHERE id={j + 1}''')
+                    con.commit()
                     con.close()
                     start_screen()
                     running = False
@@ -667,7 +676,7 @@ def pause_screen():
     continue_ = pygame.sprite.Sprite()
     buttons.add(continue_)
 
-    continue_images = [load_image('menu_play1.png'), load_image('menu_play2.png')] # заменить картинку
+    continue_images = [load_image('menu_play1.png'), load_image('menu_play2.png')]  # заменить картинку
     continue_.image = continue_images[0]
     continue_.rect = continue_.image.get_rect()
     continue_.rect.x = 290
@@ -714,10 +723,10 @@ def game():
         elif door.level == 2:
             x = [1, 1, 1, 0, 0, 0]
         else:
+            door.become_princess()
             x = [1, 1, 1, 1, 0, 0]
-        if pygame.time.get_ticks() % 100 == 0 and choice(x):
+        if pygame.time.get_ticks() % 80 == 0 and choice(x):
             Buck(bucks_v)
-            pass
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
