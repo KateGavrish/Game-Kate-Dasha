@@ -702,15 +702,22 @@ def win_screen():
 
 
 def pause_screen():
+    global score, count_life, bucks_v
     buttons = pygame.sprite.Group()
     continue_ = pygame.sprite.Sprite()
+    start_over = pygame.sprite.Sprite()
     buttons.add(continue_)
+    buttons.add(start_over)
 
     continue_images = [load_image('menu_play1.png'), load_image('menu_play2.png')]  # заменить картинку
     continue_.image = continue_images[0]
     continue_.rect = continue_.image.get_rect()
     continue_.rect.x = 290
     continue_.rect.y = 300
+
+    start_images = [load_image('menu_start1.png'), load_image('menu_start2.png')]
+    start_over.image = start_images[0]
+    start_over.rect = start_over.image.get_rect().move(290, 400)
 
     running = True
     while running:
@@ -724,15 +731,37 @@ def pause_screen():
                     continue_.image = continue_images[1]
                 else:
                     continue_.image = continue_images[0]
+                if start_over.rect.collidepoint(x, y):
+                    start_over.image = start_images[1]
+                else:
+                    start_over.image = start_images[0]
 
             elif event.type == pygame.MOUSEBUTTONUP:
                 x, y = event.pos
                 if continue_.rect.collidepoint(x, y):
                     return
+                if start_over.rect.collidepoint(x, y):
+                    preparing_for_new_game()
+                    next_level.play()
+                    new_level()
+                    return
 
         buttons.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
+
+
+def preparing_for_new_game():
+    global score, count_life, bucks_v
+    door.level = 1
+    door.image = Door.door_image
+    door.rect.y = 100
+    hero.rect.x = hero.startX
+    hero.rect.y = hero.startY
+    score = 0
+    count_life = 3
+    for i in range(3):
+        lives[i].image = life_images[1]
 
 
 def game():
